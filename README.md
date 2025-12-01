@@ -1,78 +1,96 @@
 # ML-Optimized Hierarchical Domain Classifier
 
-**A hybrid two-tier system that combines fast trie-based lookups with content-based machine learning for malicious domain detection.**
+**A three-tier hybrid system combining rule-based lookups, ML caching, and content-based machine learning for intelligent domain classification.**
 
 ---
 
-## 🎯 Project Goal
+## 🎯 What We're Doing
 
-This project implements a **hybrid classification system** that justifies the use of machine learning by analyzing complex webpage content patterns that simple domain-based rules cannot capture.
+We've built a **three-tier domain classification system** that demonstrates **when machine learning actually makes sense versus using simple rules**. The system detects malicious and advertising domains by combining:
 
-### Why This Approach?
+1. **Ground truth lookups** (198K labeled domains - instant, 100% accurate)
+2. **ML prediction cache** (fast trie lookups for previously classified domains)
+3. **Intelligent content analysis** (ML for truly unknown domains)
 
-**Pure DNS-based classification** (domain name features only):
-- ✗ Can be done with simple rules
-- ✗ Doesn't justify ML usage
-- ✗ Limited accuracy on new domains
+### The Core Problem
 
-**Our Hybrid Approach** (trie + content ML):
-- ✅ **Fast path**: Trie lookup for known domains (O(1), microseconds)
-- ✅ **Slow path**: Content-based ML for unknown domains (seconds, high accuracy)
-- ✅ **Learning system**: New classifications cached for future speed
-- ✅ **Justifies ML**: Analyzes complex HTML/JavaScript patterns
+- **Simple rules alone:** Can catch obvious patterns but fail on new/disguised domains
+- **ML-only approach:** Accurate but painfully slow (2-5 seconds per domain)
+- **Our solution:** Use rules for known domains, cache ML predictions, only fetch content when necessary
+
+### Why This Justifies Machine Learning
+
+**Domain features alone** (length, TLD, characters) can be handled with simple rules - doesn't need ML.
+
+**Content analysis** requires ML to detect complex patterns:
+- Ad network combinations (is 5 tracking scripts suspicious? 20?)
+- JavaScript behavior (legitimate sites use popups too - what's malicious?)
+- Content structure (ads vs commerce sites both have product listings)
+- Obfuscation techniques (encoded scripts, hidden iframes)
+
+**These patterns are too complex for simple rules → ML is truly justified here!**
 
 ---
 
 ## 🏗️ Architecture
 
-### Two-Tier System
+### Three-Tier System
 
 ```
-┌─────────────────────────────────────────────┐
-│         INCOMING DOMAIN REQUEST             │
-└───────────────────┬─────────────────────────┘
-                    │
-          ┌─────────▼─────────┐
-          │   TIER 1: TRIE    │
-          │   (Fast Lookup)   │
-          └─────────┬─────────┘
-                    │
-         ┌──────────┴──────────┐
-         │                     │
-    [FOUND]               [NOT FOUND]
-         │                     │
-         ▼                     ▼
-   ┌──────────┐      ┌─────────────────┐
-   │ RETURN   │      │  TIER 2: ML     │
-   │ CACHED   │      │  Fetch Content  │
-   │ RESULT   │      │  Analyze HTML   │
-   │ (Fast)   │      │  Classify       │
-   └──────────┘      └────────┬────────┘
-                              │
-                              ▼
-                     ┌─────────────────┐
-                     │ CACHE RESULT    │
-                     │ IN TRIE         │
-                     │ (Learn)         │
-                     └────────┬────────┘
-                              │
-                              ▼
-                     ┌─────────────────┐
-                     │ RETURN RESULT   │
-                     └─────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    INCOMING DOMAIN                          │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+         ┌─────────────▼─────────────┐
+         │   TIER 1: RULE-BASED      │
+         │   198K labeled domains    │
+         │   (Ground Truth)          │
+         └─────────────┬─────────────┘
+                       │
+         ┌─────────────┴─────────────┐
+         │                           │
+      [FOUND]                   [NOT FOUND]
+         │                           │
+         ▼                           ▼
+    ┌─────────┐         ┌────────────────────┐
+    │ RETURN  │         │  TIER 2: TRIE      │
+    │ 100%    │         │  Cached ML Results │
+    └─────────┘         └─────────┬──────────┘
+                                  │
+                    ┌─────────────┴─────────────┐
+                    │                           │
+                 [FOUND]                   [NOT FOUND]
+                    │                           │
+                    ▼                           ▼
+               ┌─────────┐         ┌─────────────────────┐
+               │ RETURN  │         │  TIER 3: CONTENT ML │
+               │ CACHED  │         │  Fetch & Analyze    │
+               └─────────┘         └──────────┬──────────┘
+                                              │
+                                              ▼
+                                   ┌──────────────────────┐
+                                   │ CACHE IN TRIE        │
+                                   │ RETURN RESULT        │
+                                   └──────────────────────┘
 ```
 
-### Tier 1: Trie-Based Lookup
-- **Purpose**: Fast classification of known domains
-- **Time**: O(1) - microseconds
-- **Data**: Domain name features only
-- **Storage**: Hierarchical trie with signatures
+### Tier 1: Rule-Based Lookup (198K Domains)
+- **Purpose**: Ground truth for known domains
+- **Time**: ~0.004 ms (dictionary lookup)
+- **Accuracy**: 100% (labeled training data)
+- **Coverage**: 198,377 domains from `labeled_domains.csv`
 
-### Tier 2: Content-Based ML
-- **Purpose**: Accurate classification of unknown domains
-- **Time**: 1-10 seconds (fetch + analyze)
-- **Data**: HTML content, JavaScript, tracking pixels, etc.
-- **Model**: Random Forest with 30+ content features
+### Tier 2: Trie Cache (Growing)
+- **Purpose**: Fast lookups for previously classified domains
+- **Time**: ~0.2 ms (trie pattern matching)
+- **Data**: Cached ML predictions and domain signatures
+- **Learning**: Grows as new domains are classified
+
+### Tier 3: Content-Based ML (Unknown Domains)
+- **Purpose**: Intelligent classification for truly unknown domains
+- **Time**: 2-5 seconds (fetch HTML + analyze)
+- **Features**: 30+ content-based features (ad networks, JS, tracking, etc.)
+- **Model**: Random Forest classifier
 
 ---
 
@@ -136,8 +154,8 @@ ml-hierarchical-domain-classifier/
 │       ├── content_model.pkl           # Random Forest model
 │       └── stats.json                  # Model statistics
 │
-├── train_hybrid_classifier.py          # Main training script
-├── demo_hybrid.py                      # Demo script
+├── run_classifier.py                   # Unified tool (demo/monitor/benchmark)
+├── train_hybrid_classifier.py          # Training script
 ├── proxy_server.py                     # HTTP proxy server
 └── parse_domains.py                    # Domain parser
 ```
@@ -152,78 +170,80 @@ ml-hierarchical-domain-classifier/
 pip install -r requirements.txt
 ```
 
-### 2. Train the Hybrid Model
+### 2. Use the Classifier
+
+The model is already trained. Use the unified tool:
 
 ```bash
-# Train with 100 content samples (quick test)
-python train_hybrid_classifier.py --content-samples 100
+# Quick demo
+python run_classifier.py demo
 
-# Train with 500 samples (better accuracy)
-python train_hybrid_classifier.py --content-samples 500
+# Interactive monitoring with performance metrics
+python run_classifier.py monitor
+
+# Performance benchmark
+python run_classifier.py benchmark
+python run_classifier.py benchmark -n 5000  # 5000 iterations
 ```
 
-**What happens:**
-1. Trains Tier 1 trie on 198K domains (~30 seconds)
-2. Fetches HTML from sample domains (~5-10 minutes)
-3. Trains Tier 2 content ML model (~30 seconds)
-4. Saves hybrid model
-
-### 3. Test the Classifier
+### 3. Monitor Mode Example
 
 ```bash
-python demo_hybrid.py
+python run_classifier.py monitor
 ```
 
 **Output:**
 ```
-Domain: google.com
-  Prediction:  LEGITIMATE
-  Confidence:  92.61%
-  Method:      trie (fast lookup)
+Three-Tier Classification:
+  1. Rule-based lookup (198K labeled domains)
+  2. Trie cache (previous ML predictions)
+  3. Content ML (for unknowns)
 
-Domain: ads.doubleclick.net
-  Prediction:  MALICIOUS
-  Confidence:  100.00%
-  Method:      trie (fast lookup)
+> google.com
+
+  🟢 LEGITIMATE
+  Confidence: 100%
+  Method: Tier 1: Rule-based
+  ⚡ Time: 0.0042 ms
+
+  📊 Session: 1 reqs | Avg: 0.00 ms
+     Rules: 1 | Trie: 0 | ML: 0
 ```
 
-### 4. Run the Proxy Server
+### 4. HTTP Proxy Server (Optional)
 
 ```bash
 python proxy_server.py --port 8080
 ```
 
-**Configure browser to use proxy:**
-- Host: `localhost`
-- Port: `8080`
-
-**Or test with curl:**
-```bash
-curl -x http://localhost:8080 http://example.com
-```
+Intercepts browser traffic and classifies domains in real-time.
 
 ---
 
 ## 📊 Performance Metrics
 
-### Tier 1 (Trie - Domain Only)
-- **Accuracy**: 85.60%
-- **Precision**: 91.21%
-- **Recall**: 78.59%
-- **F1-Score**: 84.43%
-- **Speed**: 0.021ms per lookup
-- **Throughput**: 47,351 lookups/second
+### Tier 1: Rule-Based (198K Domains)
+- **Speed**: ~0.004 ms
+- **Accuracy**: 100% (ground truth)
+- **Method**: Dictionary lookup
+- **Coverage**: 198,377 labeled domains
 
-### Tier 2 (Content ML)
-- **Training**: 57 samples with HTML content
-- **Features**: 33 content-based features
+### Tier 2: Trie Cache
+- **Speed**: ~0.2 ms
+- **Accuracy**: Varies (cached ML predictions)
+- **Method**: Trie pattern matching
+- **Coverage**: Growing (caches new ML results)
+
+### Tier 3: Content ML
+- **Speed**: 2,000-5,000 ms (2-5 seconds)
+- **Features**: 30+ content-based features
 - **Model**: Random Forest (100 trees)
-- **Time**: 1-10 seconds per classification (fetch + analyze)
+- **Coverage**: All unknown domains
 
-### Hybrid System
-- **Cache hit rate**: ~99% for known domains (fast)
-- **Learning**: New domains cached after classification
-- **Scalability**: Handles millions of cached entries
+### Overall System
+- **Expected hit rate**: 99%+ Tier 1 + Tier 2 (real-world usage)
+- **Average response**: < 1 ms for known domains
+- **Learning**: System improves over time
 
 ---
 
@@ -246,27 +266,12 @@ print(f"Confidence: {confidence:.2%}")
 print(f"Method: {method}")  # 'trie' or 'content_ml'
 ```
 
-### Detailed Explanation
-
-```python
-explanation = classifier.explain_prediction('ads.tracker.com')
-
-print(explanation)
-# {
-#   'domain': 'ads.tracker.com',
-#   'prediction': 'malicious',
-#   'confidence': 0.95,
-#   'method': 'trie',
-#   'signature': ('com', 'normal', 'simple'),
-#   'reasoning': 'Found in cached trie (fast lookup)'
-# }
-```
-
 ### Statistics
 
 ```python
 stats = classifier.get_statistics()
 
+print(f"Rule hits: {stats['rule_hits']}")
 print(f"Trie hits: {stats['trie_hits']}")
 print(f"Content fetches: {stats['content_fetches']}")
 print(f"Cache hit rate: {stats['cache_hit_rate']:.1%}")
@@ -274,76 +279,24 @@ print(f"Cache hit rate: {stats['cache_hit_rate']:.1%}")
 
 ---
 
-## 🎓 Educational Value
+## 🎓 Why This Matters
 
-### Why This Justifies ML
+### Educational Value
 
-1. **Domain features alone** → Can use simple rules (TLD blacklist, length thresholds)
-   - ✗ Doesn't demonstrate ML value
+This project demonstrates:
+- **When ML is appropriate** vs when simple rules suffice
+- **Three-tier architecture** balancing speed, accuracy, and intelligence
+- **Content-based feature engineering** (30+ features from HTML/JS)
+- **Learning systems** that cache and improve over time
+- **Real-world trade-offs** between performance and accuracy
 
-2. **Content analysis** → Requires ML to detect complex patterns
-   - ✅ Ad network combinations
-   - ✅ JavaScript behavior patterns
-   - ✅ Content structure analysis
-   - ✅ Obfuscation detection
-   - ✅ This is a **legitimate use of ML!**
+### Key Insight
 
-### Learning Outcomes
+**Domain features alone** can be handled with simple rules - doesn't need ML.
 
-Students demonstrate understanding of:
-- When ML is necessary vs. overkill
-- Two-tier architectures (fast + slow paths)
-- Content-based feature engineering
-- Hybrid systems that learn and improve
-- Real-world trade-offs (speed vs. accuracy)
+**Content analysis** (ad networks, JavaScript behavior, obfuscation) requires ML to detect complex patterns that rules cannot capture.
 
----
-
-## 📈 Training Your Own Model
-
-### Collect Content Training Data
-
-```python
-# Option 1: Use training script
-python train_hybrid_classifier.py --content-samples 1000
-
-# Option 2: Manual collection
-from src.content_fetcher import ContentFetcher
-from src.content_feature_extractor import ContentFeatureExtractor
-
-fetcher = ContentFetcher()
-extractor = ContentFeatureExtractor()
-
-# Fetch content
-html = fetcher.fetch_domain('example.com')
-
-# Extract features
-features = extractor.extract_features(html, 'http://example.com')
-
-# features contains 33 content-based features
-print(features.keys())
-```
-
-### Train Content Model
-
-```python
-from src.hybrid_classifier import HybridDomainClassifier
-import pandas as pd
-
-# Load content data
-content_df = pd.read_csv('data/content_training_cache.csv')
-
-# Initialize and train
-classifier = HybridDomainClassifier()
-classifier.train_content_model(
-    content_df,
-    content_col='html_content',
-    label_col='label'
-)
-
-# Save model
-classifier.save('models/my_classifier')
-```
+This is justified, practical ML - not "ML for ML's sake"!
 
 ---
 
@@ -373,101 +326,23 @@ classifier.save('models/my_classifier')
 
 ---
 
-## 🛠️ Advanced Usage
-
-### Custom Proxy Server
-
-The proxy server can be customized:
-
-```python
-# proxy_server.py with custom configuration
-python proxy_server.py \
-  --port 8080 \
-  --model models/hybrid_classifier \
-  --no-fetch  # Disable content fetching (trie only)
-```
-
-### Batch Classification
-
-```python
-# Classify multiple domains
-domains = ['example.com', 'ads.tracker.net', 'github.com']
-
-for domain in domains:
-    pred, conf, method = classifier.predict(domain)
-    print(f"{domain}: {pred} ({method})")
-```
-
-### Export Results
-
-```python
-import pandas as pd
-
-results = []
-for domain in domains:
-    pred, conf, method = classifier.predict(domain)
-    results.append({
-        'domain': domain,
-        'prediction': pred,
-        'confidence': conf,
-        'method': method
-    })
-
-df = pd.DataFrame(results)
-df.to_csv('classification_results.csv', index=False)
-```
-
----
-
 ## 📚 Dataset
 
-### Source
 - **198,377 labeled domains** from network-traffic-project
 - **Malicious**: 99,081 (ad/tracking domains)
-- **Benign**: 99,296 (legitimate sites)
-
-### Features
-
-**Domain Features** (18 features):
-- TLD, domain length, entropy, digit ratio, etc.
-
-**Content Features** (33 features):
-- Ad networks, JavaScript patterns, tracking, content quality, etc.
+- **Legitimate**: 99,296 (legitimate sites)
+- **Features**: 18 domain features + 33 content features
 
 ---
 
-## 🤝 Contributing
+## ✨ Summary
 
-This project demonstrates:
-- Hybrid ML architectures
-- Content-based classification
-- When ML is truly justified
-- Real-world trade-offs
+**Three-tier hybrid system** that demonstrates intelligent use of ML:
 
----
+1. **Tier 1 (Rules):** 198K labeled domains → Instant, 100% accurate
+2. **Tier 2 (Cache):** ML predictions cached → Fast, learning system
+3. **Tier 3 (ML):** Content analysis → Slow but handles unknowns
 
-## 📄 License
+**Key insight:** Use simple rules where possible, ML where necessary. The system proves ML is justified for content analysis (complex patterns) but overkill for simple domain lookups (use ground truth instead).
 
-Educational project for demonstrating justified ML usage in domain classification.
-
----
-
-## ✨ Key Takeaways
-
-1. **Domain features alone** → Simple rules suffice
-2. **Content features** → ML is necessary and justified
-3. **Hybrid approach** → Best of both worlds (speed + accuracy)
-4. **Learning system** → Improves over time
-5. **Real-world applicable** → Can be deployed as proxy/DNS filter
-
----
-
-## 🎯 Professor's Requirements Met
-
-✅ **Trie is valid only for known domains**
-✅ **Unknown domains trigger content fetch** (becomes proxy)
-✅ **Content-based ML classification** (HTML/JavaScript analysis)
-✅ **Justifies ML usage** (complex patterns need ML)
-✅ **System learns and caches** new classifications
-
-This approach demonstrates understanding of when ML is appropriate vs. when simpler methods suffice!
+**Real-world applicable:** Can be deployed as DNS filter, HTTP proxy, or browser extension.
