@@ -1,7 +1,15 @@
+# Core dependencies for URL Classifier
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# Proxy Server (optional - for real-time network monitoring)
+# Uncomment if you want to run the proxy server:
+# mitmproxy>=10.0.0
+
+# ML/Data Analysis (optional - original dependencies)
 pandas>=1.3.0
 numpy>=1.21.0
 scikit-learn>=1.0.0
 matplotlib>=3.4.0
 seaborn>=0.11.0
 jupyter>=1.0.0
-requests>=2.26.0

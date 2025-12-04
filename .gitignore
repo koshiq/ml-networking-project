@@ -54,3 +54,11 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.log
+
+# Environment variables (secrets)
+.env
+config.py
+
+# uv
+.venv/
+__pypackages__/
