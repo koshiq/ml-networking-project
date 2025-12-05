@@ -1,17 +1,16 @@
-# ML-Optimized URL Classifier with Real-Time Network Monitoring
+# ML-Optimized Ad Block List with Real-Time Network Monitoring
 
 **An intelligent ad blocker that learns from your browsing using LLM classification + hierarchical trie caching for instant lookups.**
 
 ---
 
-## 🎯 What This Does
+## What This Does
 
 A real-time ad blocking proxy that:
-1. ⚡ **Intercepts** your network traffic (HTTP/HTTPS)
-2. 🤖 **Classifies** URLs using Groq AI (Llama 3.1 8B) on first visit
-3. 💾 **Caches** decisions in a trie for instant future lookups (microseconds)
-4. 🚫 **Blocks** ads automatically on subsequent visits
-5. 📈 **Learns** from your browsing - gets smarter over time
+1. **Intercepts** your network traffic (HTTP/HTTPS)
+2. **Classifies** URLs using Groq AI (Llama 3.1 8B) on first visit
+3. **Caches** decisions in a trie for instant future lookups (microseconds)
+4. **Learns** from your browsing - gets smarter over time
 
 ### Key Innovation
 
@@ -147,7 +146,7 @@ Visit any website in your browser. Check the proxy terminal:
 
 ---
 
-## 🌳 How It Works
+## How It Works
 
 ### The Trie (Learned Cache)
 
@@ -347,7 +346,7 @@ Or via GUI: System Settings → Network → Wi-Fi → Details → Proxies → Un
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 ml-networking-project/
@@ -367,58 +366,6 @@ ml-networking-project/
 │
 └── data/
     └── proxy_trie.json       # Learned classifications (auto-saved)
-```
-
----
-
-## ❓ FAQ
-
-### Q: Why do ads show on the first visit?
-**A:** Unknown domains default to ALLOW. The system classifies in background and blocks on second visit. This prevents breaking legitimate sites.
-
-### Q: Why save legitimate domains in the trie?
-**A:** For performance! Without caching legitimate sites, you'd re-classify them every time (wasting API calls). With caching, only the first visit requires classification.
-
-**Example:** You visit nba.com 50 times
-- Without caching: 50 API calls
-- With caching: 1 API call (first visit), then 49 instant cache hits
-
-### Q: How do I see what's blocked?
-**A:**
-```bash
-# Summary view
-python3 src/view_trie_summary.py data/proxy_trie.json
-
-# Detailed view
-python3 src/inspect_trie.py data/proxy_trie.json
-```
-
-### Q: Can I block ads on first visit?
-**A:** Yes, add aggressive keyword filtering (see Customization section #4). This blocks obvious ads immediately without waiting for AI.
-
-### Q: Does this work offline?
-**A:** Trie lookups work offline (instant block/allow for known domains). New domains need internet + API for classification.
-
-### Q: How much does it cost?
-**A:** Free! Groq free tier:
-- 14,400 requests/day
-- 30 requests/minute
-- Enough for typical browsing (most requests are cached)
-
-### Q: What about privacy?
-**A:** All processing is local except:
-- Domain names sent to Groq for classification
-- First 800 chars of content sent for analysis
-- No browsing history, no personal data
-
-### Q: Can I use a different AI model?
-**A:** Yes! Edit `src/url_classifier.py` line 217. Compatible with any LLM API (OpenAI, Anthropic, local models).
-
-### Q: How do I reset and start fresh?
-**A:**
-```bash
-rm data/proxy_trie.json
-# Restart proxy - will start with empty trie
 ```
 
 ---
@@ -455,7 +402,7 @@ rm data/proxy_trie.json
 
 ---
 
-## 🔒 Security
+## Security
 
 ### What Changes on Your System
 
@@ -484,107 +431,5 @@ sudo security delete-certificate -c mitmproxy \
 
 ---
 
-## 🐛 Troubleshooting
-
-### Proxy not detecting domains (shows localhost only)
-
-**Fix:** Browser isn't using system proxy
-1. Restart browser after configuring proxy
-2. Verify proxy settings: System Settings → Network → Wi-Fi → Proxies
-
-### "This site can't be reached"
-
-**Fix:** Proxy not running or wrong port
-```bash
-# Check if proxy is running
-lsof -i :8080
-
-# If not running, start it
-uv run python src/proxy_server.py
-```
-
-### "Your connection is not private" (HTTPS errors)
-
-**Fix:** SSL certificate not trusted
-```bash
-# Install certificate
-sudo security add-trusted-cert -d -r trustRoot \
-  -k /Library/Keychains/System.keychain \
-  ~/.mitmproxy/mitmproxy-ca-cert.pem
-```
-
-### Slow internet
-
-**Expected:** First visit to any domain takes ~1-2 seconds (classifying in background). Second visit is instant. System gets faster as trie grows.
-
-### Check proxy status
-
-```bash
-# See what's running
-lsof -i :8080
-
-# Check system proxy config
-networksetup -getwebproxy "Wi-Fi"
-networksetup -getsecurewebproxy "Wi-Fi"
-```
-
----
-
-## 📚 Additional Resources
-
-### Archived Documentation
-
-Detailed guides are available in `docs/archive/`:
-- `MACOS_PROXY_CONFIG.md` - Detailed macOS setup
-- `PROXY_CUSTOMIZATION.md` - Advanced customization
-- `TRIE_EXPLAINED.md` - Deep dive into trie structure
-- `SYSTEM_CHANGES.md` - Complete system changes log
-
-### Example Scripts
-
-```bash
-# Basic demo (no proxy, mock data)
-uv run python src/example_usage.py
-
-# Contextual demo (context-aware classification)
-uv run python src/example_contextual.py
-```
-
----
-
-## 🤝 Contributing
-
-This is an educational project demonstrating:
-- LLM-powered classification
-- Hierarchical trie data structures
-- Real-time network interception
-- Async background processing
-- Contextual awareness in ML
-
----
-
-## 📄 License
-
-MIT License
-
----
-
-## ✨ Summary
-
-**What you get:**
-- ⚡ Self-learning ad blocker
-- 🤖 AI-powered classification
-- 💾 Instant cached lookups
-- 🎯 ~90% accuracy
-- 🔒 Privacy-focused (local processing)
-- 📈 Gets smarter over time
-
-**Perfect for:**
-- Privacy-conscious browsing
-- Learning ML/networking concepts
-- Understanding AI applications
-- Ad blocking without static lists
-
----
 
 **Start now:** `uv sync --extra proxy` → `uv run python src/proxy_server.py` → Configure browser → Browse!
