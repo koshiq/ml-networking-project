@@ -33,7 +33,8 @@ class URLClassifier:
     def __init__(self, trie: HierarchicalDomainTrie,
                  groq_api_key: Optional[str] = None,
                  llm_api_url: str = "https://api.groq.com/openai/v1/chat/completions",
-                 model_name: str = "llama-3.1-8b-instant"):
+                 model_name: str = "llama-3.1-8b-instant",
+                 whitelist_path: str = "data/whitelist.json"):
         """
         Initialize the classifier.
 
@@ -42,12 +43,17 @@ class URLClassifier:
             groq_api_key: Groq API key (get free at console.groq.com)
             llm_api_url: URL for the LLM API (default: Groq)
             model_name: Name of the LLM model (default: llama-3.1-8b-instant)
+            whitelist_path: Path to whitelist JSON file (default: data/whitelist.json)
         """
         self.trie = trie
         self.fetcher = ContentFetcher()
         self.llm_api_url = llm_api_url
         self.model_name = model_name
         self.groq_api_key = groq_api_key
+
+        # Load whitelist
+        self.whitelist = self._load_whitelist(whitelist_path)
+        print(f"Loaded {len(self.whitelist)} whitelisted domains")
 
         # Track user's browsing context for contextual relevance
         self.user_context = {
@@ -64,6 +70,7 @@ class URLClassifier:
             'total_checks': 0,
             'cache_hits': 0,
             'cache_misses': 0,
+            'whitelist_hits': 0,
             'classifications_pending': 0,
             'classifications_completed': 0,
             'ads_detected': 0,
@@ -75,6 +82,66 @@ class URLClassifier:
         self.worker_thread.start()
 
         print("URLClassifier initialized - background worker started")
+
+    def _load_whitelist(self, whitelist_path: str) -> set:
+        """
+        Load whitelist from JSON file.
+
+        Args:
+            whitelist_path: Path to whitelist JSON file
+
+        Returns:
+            Set of whitelisted domains
+        """
+        import os
+
+        whitelist = set()
+
+        if not os.path.exists(whitelist_path):
+            print(f"Warning: Whitelist file not found at {whitelist_path}")
+            return whitelist
+
+        try:
+            with open(whitelist_path, 'r') as f:
+                data = json.load(f)
+
+            # Extract all domains from all categories
+            for category, domains in data.get('categories', {}).items():
+                for domain in domains:
+                    whitelist.add(domain.lower())
+
+            return whitelist
+
+        except Exception as e:
+            print(f"Error loading whitelist: {e}")
+            return whitelist
+
+    def _is_whitelisted(self, domain: str) -> bool:
+        """
+        Check if a domain is whitelisted.
+        Supports exact matches and subdomain matching.
+
+        Args:
+            domain: Domain to check
+
+        Returns:
+            True if domain is whitelisted
+        """
+        domain_lower = domain.lower()
+
+        # Exact match
+        if domain_lower in self.whitelist:
+            return True
+
+        # Check if any whitelisted domain is a parent domain
+        # e.g., if "google.com" is whitelisted, allow "mail.google.com"
+        parts = domain_lower.split('.')
+        for i in range(len(parts)):
+            parent_domain = '.'.join(parts[i:])
+            if parent_domain in self.whitelist:
+                return True
+
+        return False
 
     def check_url(self, url: str, current_page_url: Optional[str] = None,
                   page_topic: Optional[str] = None) -> Dict[str, Any]:
@@ -107,6 +174,18 @@ class URLClassifier:
 
         # Extract domain from URL
         domain = self._extract_domain(url)
+
+        # Check whitelist first (highest priority)
+        if self._is_whitelisted(domain):
+            self.stats['whitelist_hits'] += 1
+            return {
+                'action': 'allow',
+                'source': 'whitelist',
+                'confidence': 1.0,
+                'match_level': 'exact',
+                'domain': domain,
+                'signature': None
+            }
 
         # Generate domain signature for trie lookup
         signature = self._create_signature(domain)
@@ -558,11 +637,15 @@ Classification:"""
 
     def get_statistics(self) -> Dict[str, Any]:
         """Get classification statistics."""
-        cache_hit_rate = (self.stats['cache_hits'] / max(self.stats['total_checks'], 1)) * 100
+        total = max(self.stats['total_checks'], 1)
+        cache_hit_rate = (self.stats['cache_hits'] / total) * 100
+        whitelist_hit_rate = (self.stats['whitelist_hits'] / total) * 100
 
         return {
             **self.stats,
             'cache_hit_rate': f"{cache_hit_rate:.2f}%",
+            'whitelist_hit_rate': f"{whitelist_hit_rate:.2f}%",
+            'whitelist_domains_count': len(self.whitelist),
             'trie_stats': self.trie.get_statistics(),
             'queue_size': self.classification_queue.qsize()
         }

@@ -176,6 +176,6 @@ if __name__ == '__main__':
         print(f"✓ Successfully fetched {len(content)} characters")
         print(f"Preview: {content[:200]}...")
     else:
-        print("✗ Failed to fetch content")
+        print("Failed to fetch content")
 
     fetcher.close()

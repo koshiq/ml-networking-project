@@ -39,11 +39,11 @@ def main():
     # Initialize classifier
     is_valid = config.validate()
     if is_valid:
-        print(f"✓ Using Groq API with {config.model_name}")
+        print(f"Using Groq API with {config.model_name}")
         classifier = URLClassifier(trie, groq_api_key=config.groq_api_key,
                                   model_name=config.model_name)
     else:
-        print("⚠️  Using heuristics only (no API key)")
+        print("Using heuristics only (no API key)")
         classifier = URLClassifier(trie, groq_api_key=None)
 
     print("\n" + "=" * 80)

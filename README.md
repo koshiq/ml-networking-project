@@ -67,8 +67,7 @@ MODEL_NAME=llama-3.1-8b-instant
 ### 4. Start the Proxy
 
 ```bash
-uv run python src/proxy_server.py
-```
+c```
 
 You'll see:
 ```
@@ -267,18 +266,37 @@ After browsing 100 unique sites:
 
 ## 🔧 Customization
 
-Edit `src/proxy_server.py` to customize behavior:
+### 1. Whitelist (Never Block Trusted Domains)
 
-### 1. Add Whitelist (Never Block)
+The system includes a built-in whitelist of 150+ trusted domains that are **never blocked**, including:
 
-```python
-# Add after line 102 in request() method:
-whitelist = ['google.com', 'nba.com', 'github.com']
-for trusted in whitelist:
-    if host.endswith(trusted):
-        print(f"✅ WHITELISTED: {host}")
-        return
+- **Search engines:** google.com, bing.com, duckduckgo.com
+- **Browsers:** firefox.com, safari.com, chrome.com
+- **Operating systems:** apple.com, microsoft.com, windows.com
+- **CDNs:** cloudflare.com, amazonaws.com, googleapis.com
+- **Social media:** facebook.com, twitter.com, youtube.com, reddit.com
+- **Development:** github.com, stackoverflow.com, npmjs.com
+- **Education:** wikipedia.org, khanacademy.org
+
+**Edit whitelist:** Modify [data/whitelist.json](data/whitelist.json) to add/remove domains.
+
+Example:
+```json
+{
+  "categories": {
+    "custom": [
+      "mycompany.com",
+      "www.mycompany.com",
+      "api.mycompany.com"
+    ]
+  }
+}
 ```
+
+**How it works:**
+- Whitelisted domains bypass all classification (instant response)
+- Supports subdomain matching: whitelisting `google.com` also allows `mail.google.com`
+- Statistics tracked: see whitelist hit rate in proxy logs
 
 ### 2. Add Blacklist (Always Block)
 

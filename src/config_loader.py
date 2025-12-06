@@ -14,7 +14,7 @@ try:
     DOTENV_AVAILABLE = True
 except ImportError:
     DOTENV_AVAILABLE = False
-    print("⚠️  python-dotenv not installed. Install with: pip install python-dotenv")
+    print(" WARNING: python-dotenv not installed. Install with: pip install python-dotenv")
 
 
 class Config:
@@ -47,7 +47,7 @@ class Config:
     def validate(self) -> bool:
         """Check if configuration is valid"""
         if not self.groq_api_key or self.groq_api_key == 'your_groq_api_key_here':
-            print("\n⚠️  WARNING: No valid Groq API key configured!")
+            print("\n WARNING: No valid Groq API key configured!")
             print("   Get your free API key at: https://console.groq.com")
             print("   Add it to .env file: GROQ_API_KEY=your_key_here")
             print("   Will use heuristic classification only.\n")
