@@ -405,12 +405,6 @@ ml-networking-project/
 - Trie hit: Microseconds
 - Trie miss: 0.5-2 seconds (background, user doesn't wait)
 
-### Classification Accuracy
-
-- Domain keywords: 85%
-- Network signals: 90%
-- Content analysis: 75%
-- **Combined with context: 90%+**
 
 ### Storage
 
