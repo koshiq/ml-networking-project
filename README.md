@@ -69,22 +69,6 @@ MODEL_NAME=llama-3.1-8b-instant
 ```bash
 uv run src/proxy_server.py
 ```
-======================================================================
-Ad Blocker Proxy - Real-time Network Monitor
-======================================================================
-
-✓ Starting with empty trie (will learn from traffic)
-✓ Initializing URL classifier...
-  Using Groq API with llama-3.1-8b-instant
-
-======================================================================
-Proxy is ready! Configure your browser to use:
-  HTTP Proxy:  localhost:8080
-  HTTPS Proxy: localhost:8080
-======================================================================
-
-Monitoring traffic... (Press Ctrl+C to stop and save)
-```
 
 ### 5. Configure Your Browser (macOS)
 
