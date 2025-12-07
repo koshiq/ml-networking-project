@@ -67,9 +67,7 @@ MODEL_NAME=llama-3.1-8b-instant
 ### 4. Start the Proxy
 
 ```bash
-c```
-
-You'll see:
+uv run src/proxy_server.py
 ```
 ======================================================================
 Ad Blocker Proxy - Real-time Network Monitor
