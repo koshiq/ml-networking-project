@@ -422,8 +422,3 @@ networksetup -setsecurewebproxystate "Wi-Fi" off
 sudo security delete-certificate -c mitmproxy \
   -t /Library/Keychains/System.keychain
 ```
-
----
-
-
-**Start now:** `uv sync --extra proxy` → `uv run python src/proxy_server.py` → Configure browser → Browse!
